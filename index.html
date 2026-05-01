@@ -1,0 +1,934 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Weekly Payment Tracker</title>
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --card: #ffffff;
+      --text: #1e293b;
+      --muted: #64748b;
+      --accent: #2563eb;
+      --accent-light: #eff6ff;
+      --danger: #dc2626;
+      --danger-bg: #fef2f2;
+      --success: #16a34a;
+      --border: #e2e8f0;
+      --radius: 8px;
+      --shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      margin: 0;
+      padding: 24px;
+      line-height: 1.5;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    h1 { margin: 0 0 8px; font-size: 1.5rem; }
+
+    .top-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .week-info {
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    .actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      background: var(--accent);
+      color: white;
+      border: none;
+      padding: 10px 16px;
+      border-radius: var(--radius);
+      cursor: pointer;
+      font-size: 0.95rem;
+    }
+
+    button.secondary {
+      background: white;
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    button.secondary:hover { background: var(--bg); }
+    button:hover { opacity: 0.92; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .person {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+      box-shadow: var(--shadow);
+      transition: transform 0.05s;
+    }
+
+    .person:hover { transform: translateY(-1px); }
+
+    .person.unpaid {
+      border-color: #fecaca;
+      background: var(--danger-bg);
+    }
+
+    .person.paid {
+      border-color: #bbf7d0;
+      background: #f0fdf4;
+    }
+
+    .person input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      cursor: pointer;
+      accent-color: var(--success);
+      flex-shrink: 0;
+    }
+
+    .person .name {
+      flex: 1;
+      font-weight: 500;
+    }
+
+    .badge {
+      font-size: 0.75rem;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .badge.paid { background: #dcfce7; color: #166534; }
+    .badge.unpaid { background: #fee2e2; color: #991b1b; }
+
+    .section-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin: 32px 0 12px;
+    }
+
+    .history-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+      margin-bottom: 16px;
+      box-shadow: var(--shadow);
+    }
+
+    .history-card.current {
+      border-color: var(--accent);
+      background: var(--accent-light);
+    }
+
+    #errorBox {
+      display: none;
+      background: var(--danger-bg);
+      color: var(--danger);
+      border: 1px solid #fecaca;
+      border-radius: var(--radius);
+      padding: 12px;
+      margin-bottom: 16px;
+      font-family: monospace;
+      font-size: 0.85rem;
+      white-space: pre-wrap;
+    }
+
+    .history-card h3 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .history-card .unpaid-list {
+      color: var(--danger);
+      font-weight: 600;
+    }
+
+    .history-card .card-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .history-card .card-actions button {
+      padding: 6px 12px;
+      font-size: 0.85rem;
+    }
+
+    .empty {
+      color: var(--muted);
+      padding: 16px;
+      text-align: center;
+    }
+
+    .counter {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+
+    .counter .pill {
+      background: var(--card);
+      border: 1px solid var(--border);
+      padding: 6px 12px;
+      border-radius: 999px;
+      font-size: 0.9rem;
+    }
+
+    .lang-toggle {
+      background: var(--card);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 6px 12px;
+      border-radius: var(--radius);
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+
+    .lang-toggle.active {
+      background: var(--accent);
+      color: white;
+      border-color: var(--accent);
+    }
+
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.4);
+      z-index: 50;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+    .modal-overlay.open { display: flex; }
+
+    .modal {
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+      width: 100%;
+      max-width: 520px;
+      max-height: 85vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+    .modal-header h2 { margin: 0; font-size: 1.1rem; }
+    .modal-header button {
+      background: transparent;
+      color: var(--muted);
+      padding: 4px 8px;
+      font-size: 1.2rem;
+      border: none;
+    }
+
+    .modal-body {
+      padding: 16px 20px;
+      overflow-y: auto;
+    }
+
+    .field { margin-bottom: 14px; }
+    .field label {
+      display: block;
+      font-size: 0.9rem;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+    .field input[type="number"] {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 1rem;
+    }
+
+    .name-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 10px;
+    }
+    .name-grid .field { margin-bottom: 0; }
+    .name-grid .field label {
+      font-size: 0.8rem;
+      color: var(--muted);
+      font-weight: 500;
+    }
+    .name-grid .field input {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 0.95rem;
+    }
+
+    .modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      padding: 12px 20px;
+      border-top: 1px solid var(--border);
+    }
+    .modal-footer button { padding: 8px 16px; }
+
+    @media (max-width: 600px) {
+      body { padding: 12px; }
+      h1 { font-size: 1.25rem; }
+      .top-bar { flex-direction: column; align-items: flex-start; }
+      .actions { width: 100%; }
+      button { padding: 12px 14px; font-size: 1rem; min-height: 44px; }
+      .grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+      .person { padding: 14px 10px; }
+      .person input[type="checkbox"] {
+        width: 24px;
+        height: 24px;
+      }
+      .name { font-size: 1rem; }
+      .badge { font-size: 0.8rem; padding: 3px 10px; }
+      .counter .pill { font-size: 1rem; padding: 8px 14px; }
+      .history-card { padding: 14px; }
+      .history-card h3 { font-size: 0.95rem; flex-direction: column; align-items: flex-start; gap: 4px; }
+      .history-card .card-actions button { padding: 8px 14px; font-size: 0.95rem; min-height: 44px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1 id="pageTitle">Weekly Payment Tracker</h1>
+    <div id="errorBox"></div>
+    <div class="top-bar">
+      <div>
+        <div class="week-info" id="weekLabel">Loading…</div>
+        <div class="week-info" id="statusLabel"></div>
+      </div>
+      <div class="actions">
+        <button id="nextWeekBtn" onclick="nextWeek()">Next Week</button>
+        <button class="secondary" onclick="resetCurrent()">Reset Current</button>
+        <button class="secondary" onclick="exportData()">Export</button>
+        <button class="secondary" onclick="importData()">Import</button>
+        <button class="secondary" onclick="clearAllData()">Clear Data</button>
+        <button class="secondary" id="backBtn" onclick="goBackToCurrent()" style="display:none">Back to Current</button>
+        <button class="secondary" onclick="openSettings()">Settings</button>
+        <button class="secondary" onclick="sendLineAlert()" id="sendLineBtn">Send LINE Alert</button>
+        <button class="lang-toggle" id="langEn" onclick="setLang('en')">EN</button>
+        <button class="lang-toggle" id="langTh" onclick="setLang('th')">TH</button>
+        <input type="file" id="importFile" style="display:none" accept="application/json">
+      </div>
+    </div>
+
+    <div class="counter">
+      <div class="pill"><span id="paidLabel">Paid</span>: <span id="paidCount">0</span></div>
+      <div class="pill"><span id="unpaidLabel">Unpaid</span>: <span id="unpaidCount">0</span></div>
+      <div class="pill"><span id="totalLabel">Total</span>: 30</div>
+    </div>
+
+    <div class="grid" id="peopleGrid"></div>
+
+    <div class="section-title" id="historyTitle">All Weeks</div>
+    <div id="history"></div>
+  </div>
+
+  <div class="modal-overlay" id="settingsModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 id="settingsTitle">Settings</h2>
+        <button onclick="closeSettings()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="field">
+          <label for="personCountInput" id="personCountLabel">Number of People</label>
+          <input type="number" id="personCountInput" min="1" max="200" value="30">
+        </div>
+        <div class="name-grid" id="nameGrid"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="secondary" onclick="closeSettings()" id="cancelSettings">Cancel</button>
+        <button onclick="saveSettings()" id="saveSettings">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function showError(msg) {
+      const box = document.getElementById('errorBox');
+      if (box) {
+        box.style.display = 'block';
+        box.textContent = msg;
+      }
+    }
+
+    window.onerror = function(msg, url, line, col, err) {
+      showError('Error: ' + msg + ' (line ' + line + ')');
+    };
+
+    try {
+    const STORAGE_KEY = 'weekly-payment-tracker-v7';
+    const LANG_KEY = 'weekly-payment-tracker-lang';
+    const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+
+    // Google Apps Script Web App URL
+    const GAS_URL = 'https://script.google.com/macros/s/AKfycbxznpyidYemq2sz50NfpqQdfA_bV_eGX56INuVGJNcZy0XCrYHn4NKacQRMjGtjjlMn8A/exec';
+
+    const i18n = {
+      en: {
+        title: 'Weekly Payment Tracker',
+        paid: 'Paid',
+        unpaid: 'Unpaid',
+        total: 'Total',
+        week: 'Week',
+        current: 'Current',
+        nextWeek: 'Next Week',
+        resetCurrent: 'Reset Current',
+        export: 'Export',
+        import: 'Import',
+        clearData: 'Clear Data',
+        backToCurrent: 'Back to Current',
+        allWeeks: 'All Weeks',
+        noWeeks: 'No weeks yet.',
+        everyonePaid: 'Everyone paid!',
+        unpaidList: 'Unpaid',
+        edit: 'Edit',
+        remove: 'Remove',
+        settings: 'Settings',
+        numberOfPeople: 'Number of People',
+        person: 'Person',
+        save: 'Save',
+        cancel: 'Cancel',
+        statusCurrent: 'Check who paid. All weeks are always editable.',
+        statusViewing: 'Viewing past week. Click Back to Current to return.',
+        confirmReset: 'Reset current week? This will clear all checkmarks for this week.',
+        confirmDelete: 'Delete this week?',
+        importSuccess: 'Data imported.',
+        importFail: 'Failed to import: invalid JSON.',
+        sendLineAlert: 'Send LINE Alert',
+        lineAlertSent: 'LINE alert sent!',
+        lineAlertFailed: 'LINE alert failed: '
+      },
+      th: {
+        title: 'บันทึกการจ่ายเงินรายสัปดาห์',
+        paid: 'จ่ายแล้ว',
+        unpaid: 'ยังไม่จ่าย',
+        total: 'ทั้งหมด',
+        week: 'สัปดาห์',
+        current: 'สัปดาห์ปัจจุบัน',
+        nextWeek: 'สัปดาห์ถัดไป',
+        resetCurrent: 'รีเซ็ตสัปดาห์นี้',
+        export: 'สำรองข้อมูล',
+        import: 'นำเข้าข้อมูล',
+        clearData: 'ล้างข้อมูล',
+        backToCurrent: 'กลับสัปดาห์ปัจจุบัน',
+        allWeeks: 'ทุกสัปดาห์',
+        noWeeks: 'ยังไม่มีสัปดาห์',
+        everyonePaid: 'ทุกคนจ่ายครบ!',
+        unpaidList: 'ยังไม่จ่าย',
+        edit: 'แก้ไข',
+        remove: 'ลบ',
+        settings: 'ตั้งค่า',
+        numberOfPeople: 'จำนวนคน',
+        person: 'คนที่',
+        save: 'บันทึก',
+        cancel: 'ยกเลิก',
+        statusCurrent: 'ติ๊กคนที่จ่ายแล้ว ทุกสัปดาห์แก้ไขได้เสมอ',
+        statusViewing: 'กำลังดูสัปดาห์เก่า กดกลับสัปดาห์ปัจจุบันเพื่อกลับ',
+        confirmReset: 'รีเซ็ตสัปดาห์นี้? จะล้างการติ๊กทั้งหมด',
+        confirmDelete: 'ลบสัปดาห์นี้?',
+        importSuccess: 'นำเข้าข้อมูลสำเร็จ',
+        importFail: 'นำเข้าข้อมูลล้มเหลว: JSON ไม่ถูกต้อง',
+        sendLineAlert: 'ส่งแจ้งเตือน LINE',
+        lineAlertSent: 'ส่งแจ้งเตือน LINE สำเร็จ!',
+        lineAlertFailed: 'ส่งแจ้งเตือนล้มเหลว: '
+      }
+    };
+
+    let lang = localStorage.getItem(LANG_KEY) || 'en';
+
+    function t(key) {
+      return i18n[lang][key] || key;
+    }
+
+    function setLang(l) {
+      lang = l;
+      localStorage.setItem(LANG_KEY, l);
+      document.getElementById('langEn').classList.toggle('active', l === 'en');
+      document.getElementById('langTh').classList.toggle('active', l === 'th');
+      render();
+    }
+
+    function getMonday(d) {
+      const date = new Date(d);
+      const day = date.getDay();
+      const diff = date.getDate() - day + (day === 0 ? -6 : 1);
+      return new Date(date.setDate(diff));
+    }
+
+    function formatDate(d) {
+      return new Date(d).toLocaleDateString(undefined, { year:'numeric', month:'short', day:'numeric' });
+    }
+
+    // Use local date components to avoid UTC timezone shift
+    function dateToKey(d) {
+      const date = new Date(d);
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    }
+
+    function keyToDate(key) {
+      const [y, m, d] = key.split('-').map(Number);
+      return new Date(y, m - 1, d);
+    }
+
+    function weekKey(d) {
+      return dateToKey(getMonday(d));
+    }
+
+    function nextWeekKey(key) {
+      const d = keyToDate(key);
+      return weekKey(new Date(d.getTime() + WEEK_MS));
+    }
+
+    function weekRangeLabel(key) {
+      const start = keyToDate(key);
+      const end = new Date(start.getTime() + 6 * 24 * 60 * 60 * 1000);
+      return `${formatDate(start)} – ${formatDate(end)}`;
+    }
+
+    function loadData() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return {};
+        return JSON.parse(raw);
+      } catch {
+        return {};
+      }
+    }
+
+    function saveData(data) {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      } catch (e) {
+        showError('Cannot save: ' + e.message);
+      }
+    }
+
+    function ensureDefaults(data) {
+      // Detect old flat format (v6 and earlier): week keys at root, no meta/weeks wrapper
+      if (!data.meta && Object.keys(data).length > 0) {
+        const names = [];
+        for (let i = 1; i <= 30; i++) names.push(String(i));
+        return { meta: { personCount: 30, names }, weeks: data };
+      }
+      if (!data.meta) data.meta = {};
+      if (!data.meta.personCount) data.meta.personCount = 30;
+      if (!Array.isArray(data.meta.names) || data.meta.names.length !== data.meta.personCount) {
+        data.meta.names = [];
+        for (let i = 1; i <= data.meta.personCount; i++) data.meta.names.push(String(i));
+      }
+      if (!data.weeks) data.weeks = {};
+      return data;
+    }
+
+    function getOrCreateRecord(k) {
+      if (!data.weeks[k]) data.weeks[k] = { paid: [] };
+      return data.weeks[k];
+    }
+
+    let data = ensureDefaults(loadData());
+    let currentKey = weekKey(new Date());
+    let key = currentKey;
+    let record = getOrCreateRecord(key);
+
+    function getLatestKey() {
+      const keys = Object.keys(data.weeks);
+      if (keys.length === 0) return weekKey(new Date());
+      return keys.sort((a, b) => b.localeCompare(a))[0];
+    }
+
+    function personCount() {
+      return data.meta.personCount || 30;
+    }
+
+    function personName(i) {
+      const names = data.meta.names || [];
+      return names[i - 1] || String(i);
+    }
+
+    function render() {
+      document.getElementById('pageTitle').textContent = t('title');
+      document.getElementById('paidLabel').textContent = t('paid');
+      document.getElementById('unpaidLabel').textContent = t('unpaid');
+      document.getElementById('totalLabel').textContent = t('total');
+      document.getElementById('nextWeekBtn').textContent = t('nextWeek');
+      document.querySelector('button[onclick="resetCurrent()"]').textContent = t('resetCurrent');
+      document.querySelector('button[onclick="exportData()"]').textContent = t('export');
+      document.querySelector('button[onclick="importData()"]').textContent = t('import');
+      document.querySelector('button[onclick="clearAllData()"]').textContent = t('clearData');
+      document.querySelector('button[onclick="openSettings()"]').textContent = t('settings');
+      document.getElementById('sendLineBtn').textContent = t('sendLineAlert');
+      document.getElementById('backBtn').textContent = t('backToCurrent');
+      document.getElementById('historyTitle').textContent = t('allWeeks');
+
+      const grid = document.getElementById('peopleGrid');
+      grid.innerHTML = '';
+
+      const paidSet = new Set(record.paid || []);
+      const count = personCount();
+
+      for (let i = 1; i <= count; i++) {
+        const el = document.createElement('label');
+        el.className = 'person';
+        if (paidSet.has(i)) {
+          el.classList.add('paid');
+        } else {
+          el.classList.add('unpaid');
+        }
+
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.checked = paidSet.has(i);
+        cb.onchange = () => togglePaid(i, cb.checked);
+
+        const name = document.createElement('span');
+        name.className = 'name';
+        name.textContent = personName(i);
+
+        const badge = document.createElement('span');
+        badge.className = 'badge ' + (paidSet.has(i) ? 'paid' : 'unpaid');
+        badge.textContent = paidSet.has(i) ? t('paid') : t('unpaid');
+
+        el.appendChild(cb);
+        el.appendChild(name);
+        el.appendChild(badge);
+        grid.appendChild(el);
+      }
+
+      document.getElementById('paidCount').textContent = paidSet.size;
+      document.getElementById('unpaidCount').textContent = count - paidSet.size;
+      document.querySelector('.counter .pill:last-child').innerHTML = `<span id="totalLabel">${t('total')}</span>: ${count}`;
+      document.getElementById('weekLabel').textContent = t('week') + ': ' + weekRangeLabel(key);
+
+      const isViewingPast = key !== currentKey;
+      document.getElementById('statusLabel').textContent = isViewingPast
+        ? t('statusViewing')
+        : t('statusCurrent');
+
+      document.getElementById('backBtn').style.display = isViewingPast ? 'inline-block' : 'none';
+
+      renderHistory();
+    }
+
+    function togglePaid(id, checked) {
+      const set = new Set(record.paid || []);
+      if (checked) set.add(id);
+      else set.delete(id);
+      record.paid = Array.from(set).sort((a,b)=>a-b);
+      saveData(data);
+      render();
+    }
+
+    function nextWeek() {
+      key = nextWeekKey(key);
+      currentKey = key;
+      record = getOrCreateRecord(key);
+      saveData(data);
+      render();
+    }
+
+    function resetCurrent() {
+      if (!confirm(t('confirmReset'))) return;
+      record.paid = [];
+      saveData(data);
+      render();
+    }
+
+    function clearAllData() {
+      if (!confirm('Clear ALL saved data? This cannot be undone.')) return;
+      localStorage.removeItem(STORAGE_KEY);
+      data = ensureDefaults({});
+      key = weekKey(new Date());
+      currentKey = key;
+      record = getOrCreateRecord(key);
+      render();
+    }
+
+    function goBackToCurrent() {
+      key = currentKey;
+      record = getOrCreateRecord(key);
+      render();
+    }
+
+    function editWeek(k) {
+      key = k;
+      record = getOrCreateRecord(k);
+      render();
+    }
+
+    function deleteWeek(k, event) {
+      event.stopPropagation();
+      if (!confirm(t('confirmDelete'))) return;
+      delete data.weeks[k];
+
+      if (Object.keys(data.weeks).length === 0) {
+        data.weeks = {};
+        key = weekKey(new Date());
+        currentKey = key;
+        record = getOrCreateRecord(key);
+      } else if (k === key) {
+        key = getLatestKey();
+        currentKey = key;
+        record = getOrCreateRecord(key);
+      }
+
+      if (k === currentKey && key !== currentKey) {
+        currentKey = key;
+      }
+
+      saveData(data);
+      render();
+    }
+
+    function renderHistory() {
+      const container = document.getElementById('history');
+      const keys = Object.keys(data.weeks).sort((a,b) => b.localeCompare(a));
+
+      if (keys.length === 0) {
+        container.innerHTML = '<div class="empty">' + t('noWeeks') + '</div>';
+        return;
+      }
+
+      container.innerHTML = '';
+      const count = personCount();
+      for (const k of keys) {
+        const r = data.weeks[k];
+        const paidSet = new Set(r.paid || []);
+        const unpaid = [];
+        for (let i = 1; i <= count; i++) if (!paidSet.has(i)) unpaid.push(personName(i));
+
+        const isCurrent = k === key;
+
+        const card = document.createElement('div');
+        card.className = 'history-card' + (isCurrent ? ' current' : '');
+
+        const heading = document.createElement('h3');
+        const currentBadge = isCurrent ? ` <span style="color:var(--accent);font-size:0.8rem;background:#dbeafe;padding:2px 8px;border-radius:999px">${t('current')}</span>` : '';
+        heading.innerHTML = `<span>${t('week')} ${weekRangeLabel(k)}${currentBadge}</span>`;
+
+        const body = document.createElement('div');
+        if (unpaid.length === 0) {
+          body.textContent = t('everyonePaid');
+          body.style.color = 'var(--success)';
+        } else {
+          body.innerHTML = `<div>${t('unpaidList')}: <span class="unpaid-list">${unpaid.join(', ')}</span></div>`;
+        }
+
+        const cardActions = document.createElement('div');
+        cardActions.className = 'card-actions';
+
+        const editBtn = document.createElement('button');
+        editBtn.textContent = t('edit');
+        editBtn.onclick = () => editWeek(k);
+
+        const delBtn = document.createElement('button');
+        delBtn.className = 'secondary';
+        delBtn.textContent = t('remove');
+        delBtn.onclick = (e) => deleteWeek(k, e);
+
+        cardActions.appendChild(editBtn);
+        cardActions.appendChild(delBtn);
+
+        card.appendChild(heading);
+        card.appendChild(body);
+        card.appendChild(cardActions);
+        container.appendChild(card);
+      }
+    }
+
+    function exportData() {
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `payments-${key}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function importData() {
+      document.getElementById('importFile').click();
+    }
+
+    document.getElementById('importFile').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const imported = JSON.parse(reader.result);
+          data = ensureDefaults(imported);
+          saveData(data);
+          currentKey = getLatestKey();
+          key = currentKey;
+          record = getOrCreateRecord(key);
+          render();
+          alert(t('importSuccess'));
+        } catch (err) {
+          alert(t('importFail'));
+        }
+      };
+      reader.readAsText(file);
+      e.target.value = '';
+    });
+
+    function openSettings() {
+      document.getElementById('settingsTitle').textContent = t('settings');
+      document.getElementById('personCountLabel').textContent = t('numberOfPeople');
+      document.getElementById('cancelSettings').textContent = t('cancel');
+      document.getElementById('saveSettings').textContent = t('save');
+      document.getElementById('personCountInput').value = personCount();
+      buildNameGrid();
+      document.getElementById('settingsModal').classList.add('open');
+    }
+
+    function closeSettings() {
+      document.getElementById('settingsModal').classList.remove('open');
+    }
+
+    function buildNameGrid() {
+      const grid = document.getElementById('nameGrid');
+      grid.innerHTML = '';
+      const count = parseInt(document.getElementById('personCountInput').value, 10) || 30;
+      const currentNames = data.meta.names || [];
+      for (let i = 1; i <= count; i++) {
+        const field = document.createElement('div');
+        field.className = 'field';
+        const label = document.createElement('label');
+        label.textContent = t('person') + ' ' + i;
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.id = 'name-' + i;
+        input.value = currentNames[i - 1] || String(i);
+        field.appendChild(label);
+        field.appendChild(input);
+        grid.appendChild(field);
+      }
+    }
+
+    document.getElementById('personCountInput').addEventListener('input', buildNameGrid);
+
+    document.getElementById('settingsModal').addEventListener('click', (e) => {
+      if (e.target === document.getElementById('settingsModal')) closeSettings();
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeSettings();
+    });
+
+    function saveSettings() {
+      let count = parseInt(document.getElementById('personCountInput').value, 10);
+      if (isNaN(count) || count < 1) count = 1;
+      if (count > 200) count = 200;
+
+      const names = [];
+      for (let i = 1; i <= count; i++) {
+        const input = document.getElementById('name-' + i);
+        names.push(input && input.value.trim() ? input.value.trim() : String(i));
+      }
+
+      data.meta.personCount = count;
+      data.meta.names = names;
+
+      // Trim paid arrays to remove IDs that no longer exist
+      for (const k of Object.keys(data.weeks)) {
+        data.weeks[k].paid = (data.weeks[k].paid || []).filter(id => id <= count);
+      }
+
+      saveData(data);
+      closeSettings();
+      render();
+    }
+
+    window.sendLineAlert = async function() {
+      if (!GAS_URL) {
+        alert('Please set GAS_URL in the code first. See LINE_SETUP.md for Google Apps Script setup.');
+        return;
+      }
+
+      const count = personCount();
+      const paidSet = new Set(record.paid || []);
+      const unpaidNames = [];
+      for (let i = 1; i <= count; i++) {
+        if (!paidSet.has(i)) unpaidNames.push(personName(i));
+      }
+
+      const payload = {
+        weekLabel: t('week') + ': ' + weekRangeLabel(key),
+        unpaidNames: unpaidNames,
+        paidCount: paidSet.size,
+        unpaidCount: count - paidSet.size,
+        totalCount: count
+      };
+
+      try {
+        // Use no-cors to avoid GAS CORS preflight issues.
+        // The request still reaches GAS and executes, but we cannot read the response.
+        await fetch(GAS_URL, {
+          method: 'POST',
+          mode: 'no-cors',
+          body: JSON.stringify(payload)
+        });
+        alert(t('lineAlertSent'));
+      } catch (err) {
+        alert(t('lineAlertFailed') + err.message);
+      }
+    };
+
+    setLang(lang);
+    } catch (e) {
+      showError('Startup error: ' + e.message + '\\n' + e.stack);
+    }
+  </script>
+</body>
+</html>
